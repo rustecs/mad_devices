@@ -1,0 +1,19 @@
+$cat some_file.pl 
+#!/usr/bin/perl
+
+sub factorial
+        {
+        return unless int( $_[0] ) == $_[0];
+        return 1 if $_[0] == 1;
+        return $_[0] * factorial( $_[0] - 1 );
+        }
+
+
+        #print factorial( $ARGV[0] ), "\n";
+my $time  = time();
+while ( $time + 20 > time() ){
+    factorial(100)
+}
+
+__________
+$perl -d:NYTProf some_file.pl && nytprofcsv && cat nytprof/*.csv | awk '$1> .1 {print }'
