@@ -1,0 +1,55 @@
+#!use/bin/perl
+# так то конечно нагруженный скуель звучит очень расплывчато -но допустим это долгий селект
+# скажем бд не ждать слишком долго
+use warnings;
+use strict;
+
+use DBI;
+use Time::HiRes;
+
+my $base="b2b";
+my $host="127.0.0.1";
+my $port=6432;
+my $user="user";
+my $pass="pass";
+
+my $dbh = DBI->connect("dbi:Pg:dbname=$base;host=$host;port=$port",
+                            $user,
+                            $pass,
+                            {AutoCommit => 0, RaiseError => 1, PrintError => 0}
+                         ) or die $DBI::errstr;
+
+my $query = "SELECT 1,2,3 FROM pg_sleep(5) ";
+
+my $time_start = Time::HiRes::time;
+my $sth = $dbh->prepare($query);  
+$sth->execute();
+my $lasts = Time::HiRes::time - $time_start;
+
+$sth->finish();
+
+printf("Query (no time out) lasts: %.2f ms\n", $lasts*1000);
+
+my $wait_time = 2;
+$time_start = Time::HiRes::time;
+$sth = $dbh->prepare($query);  
+
+eval {
+    $dbh->do('SET LOCAL statement_timeout TO ?', undef, int($wait_time * 1000));
+    $sth->execute();
+};
+
+$lasts = Time::HiRes::time - $time_start;
+
+if ( $@ && $@ =~ /canceling statement due to statement timeout/) {
+    print "  Got timeout. ".$@;
+}
+
+$lasts = Time::HiRes::time - $time_start;
+
+$sth->finish();
+
+printf("Query (with time out) lasts: %.2f ms\n", $lasts*1000);
+
+$dbh->disconnect;
+
